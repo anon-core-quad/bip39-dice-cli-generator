@@ -1,10 +1,10 @@
-# What's?
+# About
 
 bip39-dice-cli-generator is an offline-friendly command-line utility for creating BIP-39 mnemonic seed phrases using physical dice rolls. It transforms manually entered dice-roll data into entropy and derives a standard wallet recovery phrase, giving users a transparent way to generate seeds without depending on online services or hidden system randomness.
 
 Designed for users who value verifiable entropy, self-custody, and privacy, the tool provides a simple CLI workflow for generating wallet mnemonics from randomness they can observe and control.
 
-----------------------
+
 # Introduction
 
 To generate a strong wallet, you need a strong source of entropy. This because the private key is nothing more than a simple number between 2^1 and 2^256.
@@ -34,6 +34,7 @@ To prove mathematically, multipliy the dice entropy with the number of throws fo
 PS: if your dice have only 2 faces, you just flipping a coin :)
 log2(2) = 1 * 256 = 256 bits
 ```D6entropy = log(2) / log(2) = log2(2) = 1 bit```
+
 
 # Test script
 
