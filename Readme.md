@@ -23,17 +23,21 @@ The huge number behind 256 bits of entropy:
 
 ```2^256 1.157920892373162e+77```
 
+
 A standard dice D6 entropy:
 
 ```D6entropy = log(6) / log(2) = log2(6) = 2.584962500721156 ~ 2.585 bits```
+
 
 To know how much throws you need, you must divide the entropy target with the entropy of the single dice throw:
 
 ```NumberOfThrows = EntropyTarget / D6Entropy = 256 / 2.584962500721156 = 99.03431865204266 ~ 99```
 
+
 To prove mathematically, multipliy the dice entropy with the number of throws founded
 
 ```EntropyTarget = D6Entropy * NumberOfThrows = log2(6) * 99 = 2.584962500721156 * 99 = 255.91128757139444 ~ 256 bits```
+
 
 PS: if your dice have only 2 faces, you just flipping a coin :)
 log2(2) = 1 * 256 = 256 bits
@@ -47,6 +51,7 @@ Just for testing purpose you can generate a pseudo-random sequence of throws wit
 
 ```shuf -r -i 1-6 -n 99 | tr -d '\n'```
 
+
 **DO NOT USE THE GENERATE SEQUENCE FOR REAL WALLET!!
 USE PHYSICAL DICES!!!**
 
@@ -56,6 +61,7 @@ USE PHYSICAL DICES!!!**
 Generate seed inserting throws for default D6 dice
 
 ```bash bip39-dice-generator.sh -s <sequence_of_values>```
+
 
 Generate seed for coin flipping
 
