@@ -3,6 +3,8 @@
 export BC_LINE_LENGTH=0
 
 ENTROPY=256 #bits
+CHECKSUM_QUARTRAIN=2
+SEED_WORDS=24
 
 # Dice faces, default is 6 => D6
 # Note: if you have 2 faces, you are probably flipping a coin :)
@@ -11,13 +13,25 @@ dice_faces=6
 # The full sequence entered from prompt, contain the resuls achieved by the throws of dices or coins
 dice_throws_sequence=''
 
-while getopts "hf:s:" opt; do
+while getopts "hf:s:w:" opt; do
 	case $opt in
-		h) echo "Usage $0 -s sequence [-f faces]";;
-    		f) dice_faces=$(echo $OPTARG);;
+		h) echo "Usage $0 -s sequence [-f faces] [-e entropy]";;
+		f) dice_faces=$(echo $OPTARG);;
+		w) 
+			SEED_WORDS=$(echo $OPTARG)
+			if [ $OPTARG -eq "12" ]; then
+				ENTROPY=128				
+				CHECKSUM_QUARTRAIN=1
+			fi
+		;;
 		s) dice_throws_sequence=$(echo $OPTARG | tr -d ' ');;
   	esac
 done
+
+if [[ ${SEED_WORDS} -ne 12 && ${SEED_WORDS} -ne 24 ]]; then 
+	echo "ERROR: you need to select 12 or 24 words"	
+	exit 1
+fi
 
 # Convert dice throws sequence in a hash sha256, so it's pointless to get more entropy
 sha256value=$(sha256sum <<<$dice_throws_sequence | awk '{print $1}')
@@ -30,12 +44,13 @@ needed_number_of_rolls=$(bc -l <<< "$ENTROPY / $base_entropy")
 needed_number_of_rolls=$(awk -v rolls="$needed_number_of_rolls" 'BEGIN { printf "%.0f\n", rolls }')
 
 printf "%-20s %-10s\n" "Param" "Value"
-echo "----------------------------------"
+echo "----------------------------"
 printf "%-20s %-10s\n" "Entropy" "$ENTROPY"
+printf "%-20s %-10s\n" "Words" "$SEED_WORDS"
 printf "%-20s %-10s\n" "Dice Faces" "$dice_faces"
 printf "%-20s %-10s\n" "Needed throws" "$needed_number_of_rolls"
 printf "%-20s %-10s\n" "Inserted throws" "${#dice_throws_sequence}"
-echo "----------------------------------"
+echo "----------------------------"
 
 echo -e "\nInserted sequence:\n$dice_throws_sequence\n"
 
@@ -52,12 +67,8 @@ if (( ${#bin} % 2 == 1 )); then
     bin="0${bin}"
 fi
 
-BINARY_MNEMONICS=$(echo $bin | cut -c 1-$((ENTROPY - 3)))
-echo -e "BINARY MNEMONICS:\n$BINARY_MNEMONICS"
-
 BINARY_MNEMONICS=$(echo $bin | cut -c 1-$((ENTROPY)))
-
-echo ""
+echo -e "BINARY MNEMONICS:\n$BINARY_MNEMONICS \n"
 
 LEFTOVERBITS=$(echo $bin | cut -c $((ENTROPY - 2))-$ENTROPY | awk '{print $1}')
 echo -e "LEFT OVER BITS: $LEFTOVERBITS"
@@ -69,8 +80,8 @@ echo -e "LEFT OVER BITS: $LEFTOVERBITS"
 # Convert from HEX (human readable ascii format) to binary data (machine readable) and reconvert in sha256
 ENTROPY_BYTES=$(printf '%s' $sha256value | xxd -r -p | sha256sum)
 
-# Get the fist byte from the Sha256 of the entropy (in bytes)
-CHECKSUM_BYTE=$(echo -n $ENTROPY_BYTES | cut -c 1-2)
+# Get the fist 8 bits (24 words) or 4 bits (12 words) from the Sha256 of the entropy (in bytes)
+CHECKSUM_BYTE=$(echo -n $ENTROPY_BYTES | cut -c 1-$CHECKSUM_QUARTRAIN)
 
 CHECKSUM_BINARY=$(echo -n $CHECKSUM_BYTE | tr [:lower:] [:upper:] | xargs -I{} sh -c 'echo "obase=2; ibase=16; {}"' | bc) 
 
@@ -79,7 +90,7 @@ CHECKSUM_BINARY=$(echo -n $CHECKSUM_BYTE | tr [:lower:] [:upper:] | xargs -I{} s
 
 echo "CHECKSUM:" $LEFTOVERBITS$CHECKSUM_BINARY
 
-finalMnemonics=$BINARY_MNEMONICS$CHECKSUM_BINARY"0"
+finalMnemonics=$BINARY_MNEMONICS$CHECKSUM_BINARY
 
 # Download official BIP39 word list
 wget -o /dev/null -O bip39-english.txt https://raw.githubusercontent.com/bitcoin/bips/refs/heads/master/bip-0039/english.txt 
@@ -106,19 +117,19 @@ done < <(fold -w11 <<< "$finalMnemonics")
 
 
 # Print a table of the results
-printf "%-15s %-10s %-20s\n" "Binary" "Decimal" "Word"
-printf "%s\n" "----------------------------------------------"
-for i in $(seq 0 23); do
+printf "%-15s %-10s %-20s\n" "Binary" "Decimal+1" "Word"
+printf "%s\n" "---------------------------------------"
+for i in $(seq 0 $((SEED_WORDS-1))); do
     printf "%-15s %-10s %-20s\n" "${finalMatrix[$i,0]}" "${finalMatrix[$i,1]}" "${finalMatrix[$i,2]}"
 done
 
 echo ""
 
 # Print inline seed words
-echo "===================== SEED WORDS ======================="
-for i in $(seq 0 23); do
+printf "SEED WORDS:\n"
+printf '=%.0s' $(seq 1 $((COLUMNS - 1))) "\n"
+for i in $(seq 0 $((SEED_WORDS-1))); do
     printf "%s " "${finalMatrix[$i,2]}"
 done
-echo -e "\n============================================="
-
-echo ""
+printf "\n"
+printf '=%.0s' $(seq 1 $((COLUMNS - 1))) "\n\n"
