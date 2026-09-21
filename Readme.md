@@ -60,14 +60,19 @@ USE PHYSICAL DICES!!!**
 
 # Usage
 
-Generate seed inserting throws for default D6 dice
+Generate 24 words seed from default D6 dice throws
 
 ```bash bip39-dice-generator.sh -s <sequence_of_values>```
 
 
-Generate seed for coin flipping
+Generate 24 words seed from coin flipping
 
 ```bash bip39-dice-generator.sh -s <sequence_of_values> -f 2```
+
+
+Generate 12 words seed from D8 
+
+```bash bip39-dice-generator.sh -s <sequence_of_values> -f 8 -w 12```
 
 # Additional documentation and tools
 
