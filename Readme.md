@@ -41,8 +41,8 @@ log2(2) = 1 * 256 = 256 bits
 Just for testing purpose you can generate a pseudo-random sequence of throws with this command:
 ```shuf -r -i 1-6 -n 99 | tr -d '\n'```
 
-DO NOT USE THE GENERATE SEQUENCE FOR REAL WALLET!!
-USE PHYSICAL DICES!!!
+**DO NOT USE THE GENERATE SEQUENCE FOR REAL WALLET!!
+USE PHYSICAL DICES!!!**
 
 
 # Usage
