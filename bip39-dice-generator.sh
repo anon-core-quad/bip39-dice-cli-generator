@@ -33,7 +33,7 @@ printf "%-20s %-10s\n" "Param" "Value"
 echo "----------------------------------"
 printf "%-20s %-10s\n" "Entropy" "$ENTROPY"
 printf "%-20s %-10s\n" "Dice Faces" "$dice_faces"
-printf "%-20s %-10s\n" "Necessari throws" "$needed_number_of_rolls"
+printf "%-20s %-10s\n" "Needed throws" "$needed_number_of_rolls"
 printf "%-20s %-10s\n" "Inserted throws" "${#dice_throws_sequence}"
 echo "----------------------------------"
 
