@@ -15,13 +15,46 @@ dice_faces=6
 # The full sequence entered from prompt, contain the resuls achieved by the throws of dices or coins
 dice_throws_sequence=''
 
+show_help() {
+	local bold=$'\033[1m'
+    local reset=$'\033[0m'
+	local dim=$'\033[2m'
+    local cyan=$'\033[36m'
+cat <<EOF
+Usage: $0 [OPTIONS]
+
+Description:
+Generate BIP-39 wallet seed phrases from physical dice rolls - offline, transparent, and privacy-focused.
+
+Options:
+${bold}-h${reset}			Show this help message 
+${bold}-s${reset}			The numbers rolled on the dice, witout spaces	[required]
+${bold}-f${reset}			The number of faces of the dice
+			[default: 6]
+${bold}-w${reset}			Words to generate: 12 or 24
+			If you want to generate 12 words the entropy is setted to 128 bits, 
+			for 24 words is setted to 256 bits
+			[default: 24]
+
+Examples:
+Generate 24 words seed from default D6 dice throws
+${dim}$ bash bip39-dice-generator.sh -s 123124465261[...]4135612546${reset}
+
+Generate 24 words seed from coin flipping
+${dim}$ bash bip39-dice-generator.sh -s 1212122222[...]122222211 -f 2 -w 24${reset}
+
+Generate 12 words seed from D8
+${dim}$ bash bip39-dice-generator.sh -s 123124465261[...]5612546 -f 8 -w 12${reset}			
+EOF
+}
+
 while getopts "hf:s:w:" opt; do
 	case $opt in
-		h) echo "Usage $0 -s sequence [-f faces] [-e entropy]";;
+		h) show_help && exit 0;;
 		f) dice_faces=$(echo $OPTARG);;
 		w) 
 			if [ $OPTARG -eq "12" ]; then
-				ENTROPY=128				
+				ENTROPY=128
 				CHECKSUM_QUARTRAIN=1
 				CHECKSUM_BITS=4
 				SEED_WORDS=12
