@@ -1,10 +1,12 @@
 #!/bin/bash
 
 export BC_LINE_LENGTH=0
+DEBUG=0
 
 ENTROPY=256 #bits
 CHECKSUM_QUARTRAIN=2
 SEED_WORDS=24
+LEFT_OVER_BITS_COUNT=2
 
 # Dice faces, default is 6 => D6
 # Note: if you have 2 faces, you are probably flipping a coin :)
@@ -22,6 +24,7 @@ while getopts "hf:s:w:" opt; do
 			if [ $OPTARG -eq "12" ]; then
 				ENTROPY=128				
 				CHECKSUM_QUARTRAIN=1
+				LEFT_OVER_BITS_COUNT=6
 			fi
 		;;
 		s) dice_throws_sequence=$(echo $OPTARG | tr -d ' ');;
@@ -54,28 +57,29 @@ echo "----------------------------"
 
 echo -e "\nInserted sequence:\n$dice_throws_sequence\n"
 
-if [ ${#dice_throws_sequence} -lt $needed_number_of_rolls ]; then 
-	echo "ERROR: you need at least $needed_number_of_rolls values."	
-	exit 1
+if [ $DEBUG -eq 0 ]; then
+	if [ ${#dice_throws_sequence} -lt $needed_number_of_rolls ]; then 
+		echo "ERROR: you need at least $needed_number_of_rolls values."	
+		exit 1
+	fi
 fi
 
 echo -e "Generated SHA256 from sequence:\n$sha256value \n"
 
-bin=$(echo -n $sha256value | tr [:lower:] [:upper:] | xargs -I{} sh -c 'echo "obase=2; ibase=16; {}"' | bc)    
+hex2bin=(0000 0001 0010 0011 0100 0101 0110 0111 1000 1001 1010 1011 1100 1101 1110 1111)
 
-if (( ${#bin} % 2 == 1 )); then
-    bin="0${bin}"
+bin=""
+for (( i=0; i<${#sha256value}; i++ )); do
+	bin+=${hex2bin[$((16#${sha256value:$i:1}))]}
+done
+
+BINARY_CONVERSION=$(echo -n $bin | cut -c 1-$((ENTROPY)))
+
+if [ $DEBUG -eq 1 ]; then
+	echo -e "SHA256 BINARY CONVERSION:\n$(echo "$BINARY_CONVERSION" | fold -w 11) \n"
 fi
 
-BINARY_MNEMONICS=$(echo $bin | cut -c 1-$((ENTROPY)))
-echo -e "BINARY MNEMONICS:\n$BINARY_MNEMONICS \n"
-
-LEFTOVERBITS=$(echo $bin | cut -c $((ENTROPY - 2))-$ENTROPY | awk '{print $1}')
-echo -e "LEFT OVER BITS: $LEFTOVERBITS"
-
-#echo ""
-#echo "SHA256 conversion of the left over bits:"
-#echo $BINARY_MNEMONICS | sha256sum | awk '{print $1}'
+LEFTOVERBITS=$(echo -n $bin | cut -c $((ENTROPY - LEFT_OVER_BITS_COUNT))-$ENTROPY | awk '{print $1}')
 
 # Convert from HEX (human readable ascii format) to binary data (machine readable) and reconvert in sha256
 ENTROPY_BYTES=$(printf '%s' $sha256value | xxd -r -p | sha256sum)
@@ -83,17 +87,27 @@ ENTROPY_BYTES=$(printf '%s' $sha256value | xxd -r -p | sha256sum)
 # Get the fist 8 bits (24 words) or 4 bits (12 words) from the Sha256 of the entropy (in bytes)
 CHECKSUM_BYTE=$(echo -n $ENTROPY_BYTES | cut -c 1-$CHECKSUM_QUARTRAIN)
 
-CHECKSUM_BINARY=$(echo -n $CHECKSUM_BYTE | tr [:lower:] [:upper:] | xargs -I{} sh -c 'echo "obase=2; ibase=16; {}"' | bc) 
+for (( i=0; i<${#CHECKSUM_BYTE}; i++ )); do
+	CHECKSUM_BINARY+=${hex2bin[$((16#${sha256value:$i:1}))]}
+done
 
-#echo $CHECKSUM_BYTE
-#echo $CHECKSUM_BINARY
+LAST_WORD=$LEFTOVERBITS$CHECKSUM_BINARY
 
-echo "CHECKSUM:" $LEFTOVERBITS$CHECKSUM_BINARY
+if [ $DEBUG -eq 1 ]; then
+	echo "CHECKSUM BYTE: $CHECKSUM_BYTE"
+	echo "CHECKSUM BINARY: $CHECKSUM_BINARY"
+	echo "LEFT OVER BITS: $LEFTOVERBITS" 
+	echo "CHECKSUM: $CHECKSUM_BINARY" 
+fi
 
-finalMnemonics=$BINARY_MNEMONICS$CHECKSUM_BINARY
+echo "LAST WORD: $LAST_WORD" 
 
-# Download official BIP39 word list
-wget -o /dev/null -O bip39-english.txt https://raw.githubusercontent.com/bitcoin/bips/refs/heads/master/bip-0039/english.txt 
+finalMnemonics=$BINARY_CONVERSION$CHECKSUM_BINARY
+
+if [ $DEBUG -eq 0 ]; then
+	# Download official BIP39 word list
+	wget -o /dev/null -O bip39-english.txt https://raw.githubusercontent.com/bitcoin/bips/refs/heads/master/bip-0039/english.txt 
+fi
 
 echo -e "\n"
 
@@ -106,21 +120,22 @@ done < bip39-english.txt
 
 # Create a tridimensional array with binary values, integer converted values and the corrispondent bip39 word
 declare -A finalMatrix
-i=0
+i=1
 while IFS= read -r group; do
 	decimalConversion=$((2#$group+1))
 	finalMatrix["$i,0"]=$group
 	finalMatrix["$i,1"]=$decimalConversion
 	finalMatrix["$i,2"]=${bip39words[$decimalConversion]}
+	finalMatrix["$i,3"]=$i
 	((i += 1))
 done < <(fold -w11 <<< "$finalMnemonics")
 
 
 # Print a table of the results
-printf "%-15s %-10s %-20s\n" "Binary" "Decimal+1" "Word"
+printf "%-8s %-15s %-10s %-20s\n" "Position" "Binary" "Decimal+1" "Word"
 printf "%s\n" "---------------------------------------"
-for i in $(seq 0 $((SEED_WORDS-1))); do
-    printf "%-15s %-10s %-20s\n" "${finalMatrix[$i,0]}" "${finalMatrix[$i,1]}" "${finalMatrix[$i,2]}"
+for i in $(seq 1 $((SEED_WORDS))); do
+    printf "%-8s %-15s %-10s %-20s\n" "${finalMatrix[$i,3]}" "${finalMatrix[$i,0]}" "${finalMatrix[$i,1]}" "${finalMatrix[$i,2]}"
 done
 
 echo ""
@@ -128,7 +143,7 @@ echo ""
 # Print inline seed words
 printf "SEED WORDS:\n"
 printf '=%.0s' $(seq 1 $((COLUMNS - 1))) "\n"
-for i in $(seq 0 $((SEED_WORDS-1))); do
+for i in $(seq 1 $((SEED_WORDS))); do
     printf "%s " "${finalMatrix[$i,2]}"
 done
 printf "\n"
