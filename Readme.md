@@ -4,6 +4,12 @@ bip39-dice-cli-generator is an offline-friendly command-line utility for creatin
 
 Designed for users who value verifiable entropy, self-custody, and privacy, the tool provides a simple CLI workflow for generating wallet mnemonics from randomness they can observe and control.
 
+- usable offline
+- no dependency
+- very fast auditable code
+- essential
+- privacy oriented
+- no extra redundant features
 
 # Introduction
 
