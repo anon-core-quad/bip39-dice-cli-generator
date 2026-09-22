@@ -27,7 +27,7 @@ The former is the fastest and comfortable choice, but you can't be shure that at
 
 The huge number behind 256 bits of entropy:
 
-```2^256 1.157920892373162e+77```
+```2^256 = 1.157920892373162e+77```
 
 
 A standard dice D6 entropy:
