@@ -1,12 +1,12 @@
 #!/bin/bash
 
 export BC_LINE_LENGTH=0
-DEBUG=0
+DEBUG=1
 
 ENTROPY=256 #bits
 CHECKSUM_QUARTRAIN=2
 SEED_WORDS=24
-LEFT_OVER_BITS_COUNT=2
+CHECKSUM_BITS=8
 
 # Dice faces, default is 6 => D6
 # Note: if you have 2 faces, you are probably flipping a coin :)
@@ -15,22 +15,24 @@ dice_faces=6
 # The full sequence entered from prompt, contain the resuls achieved by the throws of dices or coins
 dice_throws_sequence=''
 
-
 while getopts "hf:s:w:" opt; do
 	case $opt in
 		h) echo "Usage $0 -s sequence [-f faces] [-e entropy]";;
 		f) dice_faces=$(echo $OPTARG);;
 		w) 
-			SEED_WORDS=$(echo $OPTARG)
 			if [ $OPTARG -eq "12" ]; then
+			echo "bbbbbbbbbbbbbbbbbbbb"
 				ENTROPY=128				
 				CHECKSUM_QUARTRAIN=1
-				LEFT_OVER_BITS_COUNT=6
+				CHECKSUM_BITS=4
+				SEED_WORDS=12
 			fi
 		;;
 		s) dice_throws_sequence=$(echo $OPTARG | tr -d ' ');;
   	esac
 done
+
+GENERATED_WORDS=$(( (SEED_WORDS - 1) * 11 ))
 
 all_in_range() {
     local lo=1 hi=$dice_faces
@@ -62,6 +64,10 @@ fi
 
 # Convert dice throws sequence in a hash sha256, so it's pointless to get more entropy
 sha256value=$(sha256sum <<<$dice_throws_sequence | awk '{print $1}')
+if [ $ENTROPY -eq 128 ]; then 
+	# Get only the first 32 bytes if entropy is 128 bits
+	sha256value=$(echo -n $sha256value | cut -c 1-32)
+fi
 
 # Calculate the number of rolls needed, based on how many faces have the dices
 base_entropy=$(echo "l($dice_faces)/l(2)" | bc -l)
@@ -90,31 +96,34 @@ fi
 
 echo -e "Generated SHA256 from sequence:\n$sha256value \n"
 
+# Lookup table for binary conversion
 hex2bin=(0000 0001 0010 0011 0100 0101 0110 0111 1000 1001 1010 1011 1100 1101 1110 1111)
 
-bin=""
+BINARY_CONVERSION=""
 for (( i=0; i<${#sha256value}; i++ )); do
-	bin+=${hex2bin[$((16#${sha256value:$i:1}))]}
+	BINARY_CONVERSION+=${hex2bin[$((16#${sha256value:$i:1}))]}
 done
 
-BINARY_CONVERSION=$(echo -n $bin | cut -c 1-$((ENTROPY)))
-
 if [ $DEBUG -eq 1 ]; then
-	echo -e "SHA256 BINARY CONVERSION:\n$(echo "$BINARY_CONVERSION" | fold -w 11) \n"
+	echo -e "SHA256 BINARY CONVERSION:\n$(echo -n "$BINARY_CONVERSION" | fold -w 11) \n"
 fi
 
-LEFTOVERBITS=$(echo -n $bin | cut -c $((ENTROPY - LEFT_OVER_BITS_COUNT))-$ENTROPY | awk '{print $1}')
+LEFTOVERBITS=$(echo -n $BINARY_CONVERSION | cut -c $((GENERATED_WORDS-ENTROPY)) | awk '{print $1}')
 
 # Convert from HEX (human readable ascii format) to binary data (machine readable) and reconvert in sha256
-ENTROPY_BYTES=$(printf '%s' $sha256value | xxd -r -p | sha256sum)
+ENTROPY_BYTES=$(echo -n $sha256value | xxd -r -p | sha256sum | awk '{print $1}')
+
 
 # Get the fist 8 bits (24 words) or 4 bits (12 words) from the Sha256 of the entropy (in bytes)
 CHECKSUM_BYTE=$(echo -n $ENTROPY_BYTES | cut -c 1-$CHECKSUM_QUARTRAIN)
 
-for (( i=0; i<${#CHECKSUM_BYTE}; i++ )); do
-	CHECKSUM_BINARY+=${hex2bin[$((16#${sha256value:$i:1}))]}
-done
+# Convert the byte of checksum in binary digits
+CHECKSUM_BINARY=${hex2bin[ $((16#${CHECKSUM_BYTE:0:1})) ]}
+if [ $ENTROPY -eq 256 ]; then
+	CHECKSUM_BINARY+=${hex2bin[ $((16#${CHECKSUM_BYTE:1:1})) ]}
+fi
 
+# Create the last word of the seed (checksum)
 LAST_WORD=$LEFTOVERBITS$CHECKSUM_BINARY
 
 if [ $DEBUG -eq 1 ]; then
