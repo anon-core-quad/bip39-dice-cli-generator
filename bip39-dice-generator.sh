@@ -21,7 +21,6 @@ while getopts "hf:s:w:" opt; do
 		f) dice_faces=$(echo $OPTARG);;
 		w) 
 			if [ $OPTARG -eq "12" ]; then
-			echo "bbbbbbbbbbbbbbbbbbbb"
 				ENTROPY=128				
 				CHECKSUM_QUARTRAIN=1
 				CHECKSUM_BITS=4
