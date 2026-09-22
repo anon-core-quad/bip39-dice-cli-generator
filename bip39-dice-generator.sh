@@ -15,6 +15,7 @@ dice_faces=6
 # The full sequence entered from prompt, contain the resuls achieved by the throws of dices or coins
 dice_throws_sequence=''
 
+
 while getopts "hf:s:w:" opt; do
 	case $opt in
 		h) echo "Usage $0 -s sequence [-f faces] [-e entropy]";;
@@ -30,6 +31,29 @@ while getopts "hf:s:w:" opt; do
 		s) dice_throws_sequence=$(echo $OPTARG | tr -d ' ');;
   	esac
 done
+
+all_in_range() {
+    local lo=1 hi=$dice_faces
+    shift 2
+	returnValue=0
+
+	for ((x=0; x<${#dice_throws_sequence}; x++)); do
+		val=${dice_throws_sequence:x:1}
+		if (( val < lo || val > hi )); then 
+			returnValue=1
+			break
+		fi
+	done
+
+    echo $returnValue
+}
+
+checkInsertedNumbers=$(all_in_range)
+
+if [[ ${checkInsertedNumbers} -eq 1 ]]; then 
+	echo "ERROR: You must insert number between 1 and $dice_faces"	
+	exit 1
+fi
 
 if [[ ${SEED_WORDS} -ne 12 && ${SEED_WORDS} -ne 24 ]]; then 
 	echo "ERROR: you need to select 12 or 24 words"	
@@ -104,12 +128,11 @@ echo "LAST WORD: $LAST_WORD"
 
 finalMnemonics=$BINARY_CONVERSION$CHECKSUM_BINARY
 
-if [ $DEBUG -eq 0 ]; then
+if [[ $DEBUG -eq 0 && ! -f "bip39-english.txt" ]]; then
 	# Download official BIP39 word list
-	wget -o /dev/null -O bip39-english.txt https://raw.githubusercontent.com/bitcoin/bips/refs/heads/master/bip-0039/english.txt 
+	wget -O bip39-english.txt https://raw.githubusercontent.com/bitcoin/bips/refs/heads/master/bip-0039/english.txt 
+	echo -e "\n"
 fi
-
-echo -e "\n"
 
 declare -A bip39words
 j=1
@@ -140,11 +163,15 @@ done
 
 echo ""
 
+COLUMNS=100
+
 # Print inline seed words
 printf "SEED WORDS:\n"
-printf '=%.0s' $(seq 1 $((COLUMNS - 1))) "\n"
+printf '=%.0s' $(seq 1 $((COLUMNS)))
+printf "\n"
 for i in $(seq 1 $((SEED_WORDS))); do
     printf "%s " "${finalMatrix[$i,2]}"
 done
 printf "\n"
-printf '=%.0s' $(seq 1 $((COLUMNS - 1))) "\n\n"
+printf '=%.0s' $(seq 1 $((COLUMNS)))
+printf "\n"
