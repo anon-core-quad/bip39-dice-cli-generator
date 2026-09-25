@@ -38,13 +38,13 @@ ${bold}-w${reset}			Words to generate: 12 or 24
 
 Examples:
 Generate 24 words seed from default D6 dice throws
-${dim}$ bash bip39-dice-generator.sh -s 123124465261[...]4135612546${reset}
+${dim}$ bash $0 -s 123124465261[...]4135612546${reset}
 
 Generate 24 words seed from coin flipping
-${dim}$ bash bip39-dice-generator.sh -s 1212122222[...]122222211 -f 2 -w 24${reset}
+${dim}$ bash $0 -s 1212122222[...]122222211 -f 2 -w 24${reset}
 
 Generate 12 words seed from D8
-${dim}$ bash bip39-dice-generator.sh -s 123124465261[...]5612546 -f 8 -w 12${reset}			
+${dim}$ bash $0 -s 123124465261[...]5612546 -f 8 -w 12${reset}			
 EOF
 }
 
